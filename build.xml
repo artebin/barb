@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="barb" default="make-executable" basedir=".">
+
+	<property name="source.dir" value="src" />
+	<property name="lib.dir" value="lib" />
+	<property name="class.dir" value="bin" />
+	<property name="dist.dir" value="dist" />
+	<property name="jar.file" value="${dist.dir}/${ant.project.name}.jar" />
+	<property name="main-class" value="net.trevize.barb.TBarb" />
+
+	<path id="libraries.path">
+		<fileset dir="${lib.dir}">
+			<include name="commons-cli-1.9.0.jar" />
+		</fileset>
+	</path>
+
+	<target name="clean" description="delete old files">
+		<delete>
+			<fileset dir="${class.dir}" defaultexcludes="false" />
+		</delete>
+		<delete>
+			<fileset dir="${dist.dir}" defaultexcludes="false" />
+		</delete>
+	</target>
+
+	<target name="compile" description="build class files" depends="clean">
+		<mkdir dir="${class.dir}" />
+		<javac includeantruntime="false" srcdir="${source.dir}" destdir="${class.dir}">
+			<classpath refid="libraries.path" />
+		</javac>
+	</target>
+
+	<target name="make-jar" depends="compile">
+		<mkdir dir="${dist.dir}" />
+		<mkdir dir="${class.dir}/${lib.dir}" />
+		<copy todir="${class.dir}/${lib.dir}" flatten="true">
+			<path refid="libraries.path" />
+		</copy>
+
+		<manifestclasspath property="manifest.classpath" jarfile="${jar.file}">
+			<classpath refid="libraries.path" />
+		</manifestclasspath>
+
+		<jar destfile="${jar.file}" basedir="${class.dir}">
+			<manifest>
+				<attribute name="Main-Class" value="${main-class}" />
+				<attribute name="Class-Path" value="${manifest.classpath}" />
+			</manifest>
+		</jar>
+	</target>
+
+	<target name="make-executable" depends="make-jar">
+		<exec executable="/bin/sh">
+			<arg value="-c" />
+			<arg value="cat jarlauncher.sh ./dist/barb.jar >./dist/barb;chmod +x ./dist/barb" />
+		</exec>
+	</target>
+
+</project>
