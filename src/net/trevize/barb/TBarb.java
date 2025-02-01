@@ -16,7 +16,8 @@ import org.apache.commons.cli.Options;
 
 public class TBarb implements Callable<Integer> {
   
-  private Options       fOptions                    = null;
+  private Options       fCommandLineOptions         = null;
+  private Options       fHelpOptions                = null;
   private HelpFormatter fHelpFormatter              = null;
   private String        fHelpCommandLineSyntax      = "barb [OPTION]... <PATTERN_FILE> <REPLACEMENT_FILE> <TARGET_FILE>...";
   private String        fHelpHeader                 = "Search and replace text with support of multi-lines pattern (literal or regular expression).\n\nOptions:\n";
@@ -27,10 +28,17 @@ public class TBarb implements Callable<Integer> {
   private File          fReplacementFile            = null;
   private List<File>    fTargetFileList             = null;
   
+  private String        fErrorMessage               = null;
+  
   public TBarb() {
-    fOptions = new Options();
-    fOptions.addOption( "r", false, "Use PATTERN_FILE as a regular expression instead of a literal" );
-    fOptions.addOption( "v", false, "Verbose output" );
+    fCommandLineOptions = new Options();
+    fCommandLineOptions.addOption( "h", false, "Help" );
+    fCommandLineOptions.addOption( "r", false, "Use PATTERN_FILE as a regular expression instead of a literal" );
+    fCommandLineOptions.addOption( "v", false, "Verbose output" );
+    
+    fHelpOptions = new Options();
+    fHelpOptions.addOption( "r", false, "Use PATTERN_FILE as a regular expression instead of a literal" );
+    fHelpOptions.addOption( "v", false, "Verbose output" );
     
     fHelpFormatter = new HelpFormatter();
     fHelpFormatter.setSyntaxPrefix( "Usage: " );
@@ -40,18 +48,21 @@ public class TBarb implements Callable<Integer> {
     return fVerboseOutput;
   }
   
-  private void printHelp() {
-    fHelpFormatter.printHelp( fHelpCommandLineSyntax, fHelpHeader, fOptions, null );
+  public String getErrorMessage() {
+    return fErrorMessage;
   }
   
-  private void readCommandLine( String[] aParameterArray ) throws Exception {
-    if ( ( aParameterArray == null ) || ( aParameterArray.length < 3 ) ) {
-      System.err.println( "Wrong number of parameters" );
-      throw new Exception( "Wrong number of parameters" );
-    }
-    
+  private void printHelp() {
+    fHelpFormatter.printHelp( fHelpCommandLineSyntax, fHelpHeader, fHelpOptions, null );
+  }
+  
+  private boolean readCommandLine( String[] aParameterArray ) throws Exception {
     CommandLineParser l_commandLineParser = new DefaultParser();
-    CommandLine l_commandLine = l_commandLineParser.parse( fOptions, aParameterArray );
+    CommandLine l_commandLine = l_commandLineParser.parse( fCommandLineOptions, aParameterArray );
+    
+    if ( l_commandLine.hasOption( "h" ) ) {
+      return true;
+    }
     
     if ( l_commandLine.hasOption( "r" ) ) {
       fPatternIsRegularExpression = true;
@@ -62,6 +73,11 @@ public class TBarb implements Callable<Integer> {
     }
     
     List<String> l_argList = l_commandLine.getArgList();
+    
+    if ( l_argList.size() < 3 ) {
+      fErrorMessage = "Wrong number of parameters";
+      throw new Exception( "Wrong number of parameters" );
+    }
     
     File l_patternFile = new File( l_argList.get( 0 ) );
     if ( ! l_patternFile.isFile() ) {
@@ -81,6 +97,8 @@ public class TBarb implements Callable<Integer> {
       File l_targetFile = new File( l_targetFilePath );
       fTargetFileList.add( l_targetFile );
     }
+    
+    return false;
   }
   
   public void searchAndReplaceByLiteral( String aPattern, String aReplacement, List<File> aTargetFileList ) throws Exception {
@@ -88,16 +106,16 @@ public class TBarb implements Callable<Integer> {
       try {
         String l_fileContent = new String( Files.readAllBytes( l_targetFile.toPath() ) );
         if ( l_fileContent.contains( aPattern ) ) {
-          System.err.println( String.format( "FoundMatch[%b] TargetFile[%s]", true, l_targetFile.getCanonicalPath() ) );
+          System.out.println( String.format( "FoundMatch[%b] TargetFile[%s]", true, l_targetFile.getCanonicalPath() ) );
           String l_replacedFileContent = l_fileContent.replaceFirst( aPattern, aReplacement );
           Files.write( l_targetFile.toPath(), l_replacedFileContent.getBytes() );
         }
         else if ( fVerboseOutput ) {
-          System.err.println( String.format( "FoundMatch[%b] TargetFile[%s]", false, l_targetFile.getCanonicalPath() ) );
+          System.out.println( String.format( "FoundMatch[%b] TargetFile[%s]", false, l_targetFile.getCanonicalPath() ) );
         }
       }
       catch ( Exception aException ) {
-        System.err.println( String.format( "Cannot apply replacement in TargetFile[%s]", l_targetFile.getCanonicalPath() ) );
+        fErrorMessage = String.format( "Cannot apply replacement in TargetFile[%s]", l_targetFile.getCanonicalPath() );
         throw aException;
       }
     }
@@ -109,7 +127,7 @@ public class TBarb implements Callable<Integer> {
       l_regexPattern = Pattern.compile( aPattern );
     }
     catch ( Exception aException ) {
-      System.err.println( String.format( "Cannot build a regex with Pattern[%s]", aPattern ) );
+      fErrorMessage = String.format( "Cannot build a regex with Pattern[%s]", aPattern );
       throw aException;
     }
     for ( File l_targetFile : aTargetFileList ) {
@@ -118,16 +136,16 @@ public class TBarb implements Callable<Integer> {
         Matcher l_matcher = l_regexPattern.matcher( l_fileContent );
         boolean l_foundMatch = l_matcher.find();
         if ( l_foundMatch ) {
-          System.err.println( String.format( "FoundMatch[%b] TargetFile[%s]", l_foundMatch, l_targetFile.getCanonicalPath() ) );
+          System.out.println( String.format( "FoundMatch[%b] TargetFile[%s]", l_foundMatch, l_targetFile.getCanonicalPath() ) );
           String l_replacedFileContent = l_matcher.replaceAll( Matcher.quoteReplacement( aReplacement ) );
           Files.write( l_targetFile.toPath(), l_replacedFileContent.toString().getBytes() );
         }
         else if ( fVerboseOutput ) {
-          System.err.println( String.format( "FoundMatch[%b] TargetFile[%s]", l_foundMatch, l_targetFile.getCanonicalPath() ) );
+          System.out.println( String.format( "FoundMatch[%b] TargetFile[%s]", l_foundMatch, l_targetFile.getCanonicalPath() ) );
         }
       }
       catch ( Exception aException ) {
-        System.err.println( String.format( "Cannot apply replacement in TargetFile[%s]", l_targetFile.getCanonicalPath() ) );
+        fErrorMessage = String.format( "Cannot apply replacement in TargetFile[%s]", l_targetFile.getCanonicalPath() );
         throw aException;
       }
     }
@@ -164,17 +182,21 @@ public class TBarb implements Callable<Integer> {
     int l_exitCode = 1;
     TBarb l_barb = new TBarb();
     try {
-      l_barb.readCommandLine( args );
-      l_exitCode = l_barb.call();
+      if ( l_barb.readCommandLine( args ) ) {
+        l_barb.printHelp();
+      }
+      else {
+        l_exitCode = l_barb.call();
+      }
     }
     catch ( Exception aException ) {
       if ( l_exitCode != 0 ) {
-        System.err.println( "Error\n" );
+        System.err.println( "Error" );
+        System.err.println( l_barb.getErrorMessage() );
       }
       if ( l_barb.isVerboseDebug() ) {
         aException.printStackTrace();
       }
-      System.err.println( "\n" );
       l_barb.printHelp();
     }
     System.exit( l_exitCode );

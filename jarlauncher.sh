@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
-MYSELF="$(readlink -f "${BASH_SOURCE}")"
+MYSELF="$(readlink -f "${0}")"
 if [ "${?}" -ne 0 ] | [ ! -f "${MYSELF}" ]; then
-	printf "!ERROR! Cannot find %s\n" "${MYSELF}" >&2
+	printf "Cannot find %s\n" "${MYSELF}" >&2
 	exit 1
 fi
 JAVA_PATH=java
