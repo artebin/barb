@@ -38,7 +38,7 @@ public class TBarb implements Callable<Integer> {
     
     fHelpOptions = new Options();
     fHelpOptions.addOption( "r", false, "Use PATTERN_FILE as a regular expression instead of a literal" );
-    fHelpOptions.addOption( "v", false, "Verbose output" );
+    fHelpOptions.addOption( "v", false, "Verbose output: print files with no match and full error traces" );
     
     fHelpFormatter = new HelpFormatter();
     fHelpFormatter.setSyntaxPrefix( "Usage: " );
@@ -95,6 +95,10 @@ public class TBarb implements Callable<Integer> {
     for ( int l_targetFilePathIndex = 2; l_targetFilePathIndex < l_argList.size(); ++l_targetFilePathIndex ) {
       String l_targetFilePath = l_argList.get( l_targetFilePathIndex );
       File l_targetFile = new File( l_targetFilePath );
+      if ( ! l_targetFile.isFile() ) {
+        System.err.println( String.format( "TargetFile[%s] is not a file, skipping it!", l_targetFile ) );
+        continue;
+      }
       fTargetFileList.add( l_targetFile );
     }
     
@@ -107,7 +111,7 @@ public class TBarb implements Callable<Integer> {
         String l_fileContent = new String( Files.readAllBytes( l_targetFile.toPath() ) );
         if ( l_fileContent.contains( aPattern ) ) {
           System.out.println( String.format( "FoundMatch[%b] TargetFile[%s]", true, l_targetFile.getCanonicalPath() ) );
-          String l_replacedFileContent = l_fileContent.replaceFirst( aPattern, aReplacement );
+          String l_replacedFileContent = l_fileContent.replaceAll( aPattern, aReplacement );
           Files.write( l_targetFile.toPath(), l_replacedFileContent.getBytes() );
         }
         else if ( fVerboseOutput ) {
@@ -192,7 +196,9 @@ public class TBarb implements Callable<Integer> {
     catch ( Exception aException ) {
       if ( l_exitCode != 0 ) {
         System.err.println( "Error" );
-        System.err.println( l_barb.getErrorMessage() );
+        if ( ( l_barb.getErrorMessage() != null ) && ( ! l_barb.getErrorMessage().isBlank() ) ) {
+          System.err.println( l_barb.getErrorMessage() );
+        }
       }
       if ( l_barb.isVerboseDebug() ) {
         aException.printStackTrace();
