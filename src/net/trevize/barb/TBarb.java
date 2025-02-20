@@ -196,7 +196,8 @@ public class TBarb implements Callable<Integer> {
     catch ( Exception aException ) {
       if ( l_exitCode != 0 ) {
         System.err.println( "Error" );
-        if ( ( l_barb.getErrorMessage() != null ) && ( ! l_barb.getErrorMessage().isBlank() ) ) {
+        // String.isBlank() has been introduced in Java11
+        if ( ( l_barb.getErrorMessage() != null ) && ( ! l_barb.getErrorMessage().chars().allMatch( Character::isWhitespace ) ) ) {
           System.err.println( l_barb.getErrorMessage() );
         }
       }

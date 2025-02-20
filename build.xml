@@ -1,60 +1,68 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <project name="barb" default="make-executable" basedir=".">
-
-	<property name="source.dir" value="src" />
-	<property name="lib.dir" value="lib" />
-	<property name="class.dir" value="bin" />
-	<property name="dist.dir" value="dist" />
-	<property name="jar.file" value="${dist.dir}/${ant.project.name}.jar" />
-	<property name="main-class" value="net.trevize.barb.TBarb" />
-
-	<path id="libraries.path">
-		<fileset dir="${lib.dir}">
-			<include name="commons-cli-1.9.0.jar" />
+	
+	<property name="SRC_DIR" value="src" />
+	<property name="LIB_DIR" value="lib" />
+	<property name="MAIN_CLASS" value="net.trevize.barb.TBarb" />
+	<property name="JARINJARLOADER_SRC_DIR" value="resources/eclipse-jar-in-jar-loader/jar in jar loader" />
+	
+	<property name="BUILD_DIR" value="build" />
+	<property name="BUILD_SRC_DIR" value="${BUILD_DIR}/src" />
+	<property name="BUILD_BIN_DIR" value="${BUILD_DIR}/bin" />
+	
+	<path id="BUILD_CLASSPATH">
+		<fileset dir="${BUILD_BIN_DIR}">
+			<include name="*.jar"/>
 		</fileset>
 	</path>
-
-	<target name="clean" description="delete old files">
-		<delete>
-			<fileset dir="${class.dir}" defaultexcludes="false" />
-		</delete>
-		<delete>
-			<fileset dir="${dist.dir}" defaultexcludes="false" />
-		</delete>
+	
+	<property name="DIST_DIR" value="dist" />
+	
+	<target name="clean">
+		<delete dir="${BUILD_DIR}" failonerror="false" />
+		<delete dir="${DIST_DIR}" failonerror="false" />
 	</target>
-
-	<target name="compile" description="build class files" depends="clean">
-		<mkdir dir="${class.dir}" />
-		<javac includeantruntime="false" srcdir="${source.dir}" destdir="${class.dir}">
-			<classpath refid="libraries.path" />
-		</javac>
+	
+	<target name="compile" depends="clean">
+		<mkdir dir="${BUILD_DIR}" />
+		
+		<mkdir dir="${BUILD_SRC_DIR}" />
+		<copy todir="${BUILD_SRC_DIR}" ><fileset dir="${SRC_DIR}" /></copy>
+		<copy todir="${BUILD_SRC_DIR}" ><fileset dir="${JARINJARLOADER_SRC_DIR}" /></copy>
+		
+		<mkdir dir="${BUILD_BIN_DIR}" />
+		<copy todir="${BUILD_BIN_DIR}" flatten="true"><fileset dir="${LIB_DIR}" /></copy>
+		<javac release="8" includeantruntime="false" srcdir="${BUILD_SRC_DIR}" destdir="${BUILD_BIN_DIR}" classpathref="BUILD_CLASSPATH" />
 	</target>
-
+	
 	<target name="make-jar" depends="compile">
-		<mkdir dir="${dist.dir}" />
-		<mkdir dir="${class.dir}/${lib.dir}" />
-		<copy todir="${class.dir}/${lib.dir}" flatten="true">
-			<path refid="libraries.path" />
-		</copy>
-
-		<manifestclasspath property="manifest.classpath" jarfile="${jar.file}">
-			<classpath refid="libraries.path" />
-		</manifestclasspath>
-
-		<jar destfile="${jar.file}" basedir="${class.dir}">
+		<pathconvert property="MANIFEST_CLASSPATH" pathsep=" ">
+			<path refid="BUILD_CLASSPATH"/>
+			<mapper>
+				<chainedmapper>
+					<flattenmapper />
+					<globmapper from="*.jar" to="*.jar"/>
+				</chainedmapper>
+			</mapper>
+		</pathconvert>
+		
+		<jar destfile="${BUILD_DIR}/${ant.project.name}.jar" basedir="${BUILD_BIN_DIR}">
 			<manifest>
-				<attribute name="Main-Class" value="${main-class}" />
-				<attribute name="Class-Path" value="${manifest.classpath}" />
+				<attribute name="Main-Class" value="org.eclipse.jdt.internal.jarinjarloader.JarRsrcLoader" />
+				<attribute name="Rsrc-Class-Path" value="./ ${MANIFEST_CLASSPATH}" />
+				<attribute name="Rsrc-Main-Class" value="${MAIN_CLASS}" />
+				<attribute name="Class-Path" value="." />
 			</manifest>
 		</jar>
 	</target>
-
+	
 	<target name="make-executable" depends="make-jar">
+		<mkdir dir="${DIST_DIR}" />
 		<exec executable="/bin/sh">
 			<arg value="-c" />
-			<arg value="cat jarlauncher.sh ./dist/barb.jar >./dist/barb;chmod +x ./dist/barb" />
+			<arg value="cat jarlauncher.sh ${BUILD_DIR}/${ant.project.name}.jar >${DIST_DIR}/${ant.project.name};chmod +x ${DIST_DIR}/${ant.project.name}" />
 		</exec>
 	</target>
-
+	
 </project>
