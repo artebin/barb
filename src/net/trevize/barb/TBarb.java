@@ -204,6 +204,7 @@ public class TBarb implements Callable<Integer> {
       if ( l_barb.isVerboseDebug() ) {
         aException.printStackTrace();
       }
+      System.out.println();
       l_barb.printHelp();
     }
     System.exit( l_exitCode );
