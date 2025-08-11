@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="barb" default="all" basedir=".">
+	
+	<property name="SRC_DIR" value="src" />
+	<property name="MAIN_CLASS" value="net.trevize.barb.TBarb" />
+	<property name="LIB_DIR" value="lib" />
+	
+	<property name="JARINJARLOADER_SRC_DIR" value="resources/eclipse-jar-in-jar-loader/jar in jar loader" />
+	<property name="JARLAUNCHERSH_FILE" value="resources/jarlauncher.sh" />
+	
+	<property name="BUILD_DIR" value="build" />
+	<property name="BUILD_SRC_DIR" value="${BUILD_DIR}/src" />
+	<property name="BUILD_BIN_DIR" value="${BUILD_DIR}/bin" />
+	
+	<path id="BUILD_CLASSPATH">
+		<fileset dir="${BUILD_BIN_DIR}">
+			<include name="*.jar"/>
+		</fileset>
+	</path>
+	
+	<property name="DIST_DIR" value="dist" />
+	
+	<target name="all" depends="clean, compile, makejar, makeexe" description=""/>
+	
+	<target name="clean" description="">
+		<delete dir="${BUILD_DIR}" failonerror="false" />
+		<delete dir="${DIST_DIR}" failonerror="false" />
+	</target>
+	
+	<target name="compile" depends="clean" description="">
+		<mkdir dir="${BUILD_DIR}" />
+		
+		<mkdir dir="${BUILD_SRC_DIR}" />
+		<copy todir="${BUILD_SRC_DIR}" ><fileset dir="${SRC_DIR}" /></copy>
+		<copy todir="${BUILD_SRC_DIR}" ><fileset dir="${JARINJARLOADER_SRC_DIR}" /></copy>
+		
+		<mkdir dir="${BUILD_BIN_DIR}" />
+		<copy todir="${BUILD_BIN_DIR}" flatten="true"><fileset dir="${LIB_DIR}" /></copy>
+		<javac release="8" includeantruntime="false" srcdir="${BUILD_SRC_DIR}" destdir="${BUILD_BIN_DIR}" classpathref="BUILD_CLASSPATH" />
+	</target>
+	
+	<target name="makejar" depends="compile" description="">
+		<pathconvert property="MANIFEST_CLASSPATH" pathsep=" ">
+			<path refid="BUILD_CLASSPATH"/>
+			<mapper>
+				<chainedmapper>
+					<flattenmapper />
+					<globmapper from="*.jar" to="*.jar"/>
+				</chainedmapper>
+			</mapper>
+		</pathconvert>
+		
+		<jar destfile="${BUILD_DIR}/${ant.project.name}.jar" basedir="${BUILD_BIN_DIR}">
+			<manifest>
+				<attribute name="Main-Class" value="org.eclipse.jdt.internal.jarinjarloader.JarRsrcLoader" />
+				<attribute name="Rsrc-Class-Path" value="./ ${MANIFEST_CLASSPATH}" />
+				<attribute name="Rsrc-Main-Class" value="${MAIN_CLASS}" />
+				<attribute name="Class-Path" value="." />
+			</manifest>
+		</jar>
+	</target>
+	
+	<target name="makeexe" depends="makejar" description="">
+		<mkdir dir="${DIST_DIR}" />
+		<exec executable="/bin/sh">
+			<arg value="-c" />
+			<arg value="cat ${JARLAUNCHERSH_FILE} ${BUILD_DIR}/${ant.project.name}.jar >${DIST_DIR}/${ant.project.name};chmod +x ${DIST_DIR}/${ant.project.name}" />
+		</exec>
+	</target>
+	
+</project>
