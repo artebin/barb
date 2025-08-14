@@ -2,8 +2,8 @@
 
 I needed a friendly tool to replace multiline piece of text in many different files organized in a directory tree.  
 No complicated command line, the searched pattern and the replacement text are specified as files.  
-It is written in Java, it could have been written in Perl or Python 🤷.  
-The binary is 80Kb large and is directly executable (no `$java -jar ...`).  
+It is written in Java, of course it could have been written in Perl or Python 🤷.  
+The binary is 80Kb large, compiled with Java 8 and is directly executable (no need for `$java -jar ...`) but requires Java to be installed.  
 
 ~~~
 Usage: barb [OPTION]... <PATTERN_FILE> <REPLACEMENT_FILE> <TARGET_FILE>...
